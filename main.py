@@ -14,22 +14,18 @@ from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 
 
-# This helps SQLite understand dates better
 def adapt_date(date):
     return date.strftime("%Y-%m-%d")
 
 
-# Just gets rid of time info from dates
 def convert_date(s):
     return datetime.datetime.strptime(s, "%Y-%m-%d")
 
 
-# Hook up our date handlers with SQLite
 sqlite3.register_adapter(datetime.date, adapt_date)
 sqlite3.register_converter("DATE", convert_date)
 
 
-# Shows all expenses in the table
 def listAllExpenses():
     global dbconnector, data_table
     data_table.delete(*data_table.get_children())
@@ -39,7 +35,6 @@ def listAllExpenses():
         data_table.insert('', END, values=val)
 
 
-# Loads up the details of an expense when you click on it
 def viewExpenseInfo():
     global data_table
     global dateField, payee, description, amount, modeOfPayment
@@ -56,7 +51,6 @@ def viewExpenseInfo():
     modeOfPayment.set(val[5])
 
 
-# Wipes the form clean
 def clearFields():
     global description, payee, amount, modeOfPayment, dateField, data_table
     todayDate = datetime.datetime.now().date()
@@ -68,7 +62,6 @@ def clearFields():
     data_table.selection_remove(*data_table.selection())
 
 
-# Gets rid of the selected expense
 def removeExpense():
     if not data_table.selection():
         mb.showerror('No record selected!', 'Please select a record to delete!')
@@ -84,7 +77,6 @@ def removeExpense():
         mb.showinfo('Record deleted successfully!', 'The record you wanted to delete has been deleted successfully')
 
 
-# Nuclear option - wipes all expenses
 def removeAllExpenses():
     confirmation = mb.askyesno('Are you sure?',
                                'Are you sure that you want to delete all the expense items from the database?',
@@ -100,7 +92,6 @@ def removeAllExpenses():
         mb.showinfo('Ok then', 'The task was aborted and no expense was deleted!')
 
 
-# Adds a new expense to the tracker
 def addAnotherExpense():
     global dateField, payee, description, amount, modeOfPayment, dbconnector
     if not dateField.get() or not payee.get() or not description.get() or not amount.get() or not modeOfPayment.get():
@@ -124,7 +115,6 @@ def addAnotherExpense():
     mb.showinfo('Expense added', 'The expense whose details you just entered has been added to the database')
 
 
-# Updates an existing expense
 def editExpense():
     def editExistingExpense():
         global dateField, amount, description, payee, modeOfPayment
@@ -161,7 +151,6 @@ def editExpense():
     editSelectedButton.grid(row=0, column=0, sticky=W, padx=50, pady=10)
 
 
-# Turns the selected expense into a readable sentence
 def selectedExpenseToWords():
     global data_table
     if not data_table.selection():
@@ -173,7 +162,6 @@ def selectedExpenseToWords():
     mb.showinfo('Here\'s how to read your expense', msg)
 
 
-# Previews the expense in words before adding it
 def expenseToWordsBeforeAdding():
     global dateField, description, amount, payee, modeOfPayment
 
@@ -183,19 +171,15 @@ def expenseToWordsBeforeAdding():
     mb.showinfo('Here\'s how to read your expense', msg)
 
 
-# Export expenses to Excel - simplified to only Excel export
 def exportExpenses():
     global dbconnector
     all_data = dbconnector.execute('SELECT * FROM ExpenseTracker')
     data = all_data.fetchall()
 
-    # Create DataFrame from our expense data
     df = pd.DataFrame(data, columns=['ID', 'Date', 'Payee', 'Description', 'Amount', 'ModeOfPayment'])
     
-    # Let user choose where to save the Excel file
     file_path = filedialog.asksaveasfilename(defaultextension='.xlsx', filetypes=[('Excel files', '*.xlsx')])
     
-    # If they picked a location, save the file there
     if file_path:
         try:
             df.to_excel(file_path, index=False)
@@ -204,20 +188,16 @@ def exportExpenses():
             mb.showerror('Export Failed', f'Could not export to Excel: {str(e)}')
 
 
-# Shows pretty graphs of your spending
 def displayGraph():
     global dbconnector
     all_data = dbconnector.execute('SELECT * FROM ExpenseTracker')
     data = all_data.fetchall()
 
-    # Create a new window for the graph
     graphWindow = Toplevel()
     graphWindow.title("Amount Spent Graph")
 
-    # Create a figure and axis
     fig, ax = plt.subplots(figsize=(10, 6))
 
-    # Choose the type of graph based on the selected option
     if graphOption.get() == "Total Amount Spent per Mode of Payment":
         modeOfPayment_amount = {}
         for row in data:
@@ -259,18 +239,15 @@ def displayGraph():
     plt.xticks(rotation=45)
     plt.tight_layout()
 
-    # Display the graph in the new window
     canvas = FigureCanvasTkAgg(fig, master=graphWindow)
     canvas.draw()
     canvas.get_tk_widget().pack()
 
-    # Add a 'Save Graph' button
     Button(graphWindow, text="Save Graph", font=("Bahnschrift Condensed", "13"), width=30, bg="#90EE90",
            fg="#000000", relief=GROOVE, activebackground="#008000", activeforeground="#FF0000",
            command=lambda: saveGraph(fig)).pack(pady=10)
 
 
-# Saves your pretty graph as an image
 def saveGraph(fig):
     file_path = filedialog.asksaveasfilename(defaultextension='.png', filetypes=[('PNG files', '*.png')])
     if file_path:
@@ -278,7 +255,6 @@ def saveGraph(fig):
         mb.showinfo('Graph Saved', f'The graph has been saved to {file_path}')
 
 
-# Finds expenses matching your search terms
 def searchExpenses():
     keyword = searchEntry.get()
     query = ("SELECT * FROM ExpenseTracker WHERE Date LIKE ? OR Payee LIKE ? OR Description LIKE ? OR Amount LIKE ? OR "
@@ -290,7 +266,6 @@ def searchExpenses():
         data_table.insert('', END, values=val)
 
 
-# Function to calculate and display total expense
 def showTotalExpense():
     global dbconnector
     total = dbconnector.execute('SELECT SUM(Amount) FROM ExpenseTracker').fetchone()[0]
@@ -298,7 +273,6 @@ def showTotalExpense():
     mb.showinfo('Total Expense', f'The total expense is: {total}')
 
 
-# Function to calculate and display total monthly expense
 def showMonthlyExpense():
     global dbconnector
     current_month = datetime.datetime.now().strftime("%Y-%m")
@@ -306,7 +280,6 @@ def showMonthlyExpense():
     total = total if total else 0  # Handle None case
     mb.showinfo('Monthly Expense', f'The total expense for this month is: {total}')
 
-# Function to calculate and display total yearly expense
 def showYearlyExpense():
     global dbconnector
     current_year = datetime.datetime.now().strftime("%Y")
@@ -315,12 +288,10 @@ def showYearlyExpense():
     mb.showinfo('Yearly Expense', f'The total expense for this year is: {total}')
 
 
-# Main Window
 mainWindow = Tk()
 mainWindow.geometry("1920x1080")
 mainWindow.title("Expense Tracker")
 
-# Styling
 style = ttk.Style()
 style.configure('TButton', font=('Bahnschrift Condensed', 13), background='#FFA07A', foreground='#FFFFFF',
                 relief=GROOVE, padding=5)
@@ -328,11 +299,9 @@ style.configure('TLabel', font=('Bahnschrift Condensed', 15), foreground='#33333
 style.configure('Treeview.Heading', font=('Bahnschrift Condensed', 15), background='#FFA07A', foreground='#FFFFFF')
 style.configure('Treeview', font=('Bahnschrift Condensed', 13), rowheight=25)
 
-# Title
 titleLabel = Label(mainWindow, text="Expense Tracker", font=("Bahnschrift Condensed", 24), bg="#FFA07A", fg="#FFFFFF")
 titleLabel.pack(pady=10, fill=X)
 
-# add a search bar to GUI
 searchFrame = Frame(mainWindow, bg="#F5F5F5")
 searchFrame.pack(fill=X)
 
@@ -347,15 +316,12 @@ searchButton = Button(searchFrame, text="Search", font=("Bahnschrift Condensed",
                       command=searchExpenses)
 searchButton.pack(side=LEFT, padx=10, pady=10)
 
-# Main Frame
 mainFrame = Frame(mainWindow, bg="#FFFFFF")
 mainFrame.pack(fill=BOTH, expand=True)
 
-# Figure out where the database should go
 root_dir = os.path.dirname(os.path.abspath(__file__))
 db_path = os.path.join(root_dir, 'ExpenseTracker.db')
 
-# Set up the database connection
 dbconnector = sqlite3.connect(db_path, detect_types=sqlite3.PARSE_DECLTYPES)
 dbconnector.execute('''CREATE TABLE IF NOT EXISTS ExpenseTracker (
                        ID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -367,14 +333,12 @@ dbconnector.execute('''CREATE TABLE IF NOT EXISTS ExpenseTracker (
                    )''')
 dbconnector.commit()
 
-# Creating a treeview to display expenses
 data_table = ttk.Treeview(mainFrame, columns=('ID', 'Date', 'Payee', 'Description', 'Amount', 'ModeOfPayment'),
                           show='headings', style='Treeview')
 for col in ('ID', 'Date', 'Payee', 'Description', 'Amount', 'ModeOfPayment'):
     data_table.heading(col, text=col)
 data_table.pack(fill=BOTH, expand=True)
 
-# frame for adding an expense
 frameL1 = Frame(mainWindow, padx=10, pady=10, bg="#F5F5F5")
 frameL1.pack(side=LEFT, anchor=NW)
 
@@ -403,14 +367,11 @@ Label(frameL1, text="Mode of Payment:", font=("Bahnschrift Condensed", "15"), bg
 modeOfPayment = StringVar()
 paymentOptions = ['Cash', 'Credit Card', 'Debit Card', 'Net Banking', 'UPI', 'Others']
 modeOfPayment.set('Cash')
-# Create the OptionMenu
 option_menu = OptionMenu(frameL1, modeOfPayment, *paymentOptions)
 option_menu.grid(row=5, column=1, sticky=W, padx=10, pady=10)
 
-# Set the width of the entry widget inside the OptionMenu
 option_menu.config(width=18)
 
-# Add a 'Clear Fields' button
 Button(frameL1, text="Clear Fields", font=("Bahnschrift Condensed", "13"), width=20, bg="#FFA07A", fg="#FFFFFF",
        relief=GROOVE, activebackground="#FF7F50", activeforeground="#FFFFFF", command=clearFields).grid(row=6,
                                                                                                         column=0,
@@ -422,13 +383,11 @@ Button(frameL1, text="Add", font=("Bahnschrift Condensed", "13"), width=20, bg="
        activebackground="#FF7F50", activeforeground="#FFFFFF", command=addAnotherExpense).grid(row=6, column=1,
                                                                                                sticky=W, padx=10,
                                                                                                pady=10)
-# frame for listing all the expenses
 frameL2 = Frame(mainWindow, padx=10, pady=10, bg="#F5F5F5")
 frameL2.pack(side=LEFT, anchor=NW)
 
 listAllExpenses()
 
-# move buttons to frameL2
 
 Button(frameL2, text="View Expense Info", font=("Bahnschrift Condensed", "13"), width=30, bg="#FFA07A", fg="#FFFFFF",
        relief=GROOVE, activebackground="#FF7F50", activeforeground="#FFFFFF", command=viewExpenseInfo).grid(row=1,
@@ -466,7 +425,6 @@ Button(frameL2, text="Read Expense before Adding", font=("Bahnschrift Condensed"
        fg="#FFFFFF", relief=GROOVE, activebackground="#FF7F50", activeforeground="#FFFFFF",
        command=expenseToWordsBeforeAdding).grid(row=6, column=0, sticky=W, padx=50, pady=10)
 
-# frame for buttons
 frameL3 = Frame(mainWindow, padx=10, pady=10, bg="#F5F5F5")
 frameL3.pack(side=LEFT, anchor=NW)
 
@@ -477,7 +435,6 @@ Button(frameL3, text="Export to Excel", font=("Bahnschrift Condensed", "13"), wi
                                                                                                            padx=50,
                                                                                                            pady=10)
 
-# Create a button to view the graph
 Button(frameL3, text="View Graph", font=("Bahnschrift Condensed", "13"), width=30, bg="#FFA07A", fg="#FFFFFF",
        relief=GROOVE, activebackground="#FF7F50", activeforeground="#FFFFFF", command=displayGraph).grid(row=3,
                                                                                                          column=0,
@@ -485,17 +442,14 @@ Button(frameL3, text="View Graph", font=("Bahnschrift Condensed", "13"), width=3
                                                                                                          padx=50,
                                                                                                          pady=10)
 
-# Add a drop-down menu to choose the graph option
 graphOption = StringVar()
 graphOption.set("Total Amount Spent per Mode of Payment")
-# Create the OptionMenu
 graph_option_menu = OptionMenu(frameL3, graphOption,
                                "Total Amount Spent per Mode of Payment",
                                "Total Amount Spent per Payee",
                                "Total Amount Spent per Month")
 graph_option_menu.grid(row=2, column=0, sticky=W, padx=50, pady=10)
 
-# Set the width of the entry widget inside the OptionMenu
 graph_option_menu.config(width=29)
 
 Button(frameL3, text="Show Total Expense", font=("Bahnschrift Condensed", "13"), width=30, bg="#FFA07A", fg="#FFFFFF",
